@@ -534,8 +534,8 @@ def slack_post(
         noArticlesPhases = [
             "Hello Optomech-fans! This week nobody published a new interesting article on ArXiv: we should drink more coffee and work harder :coffee:\n",
             "Hello Optomech-fans! No news this week on ArXiv. I`m sure the Danish weather affected our collegues` schedule :rain_cloud:\n",
-            "Hello Optomech-fans! It seems nobody has done anything interesting last week, let`s hope to get something new next week :crossed_fingers:\n",
-            "Hello Optomech-fans! No updates make us sad, but we can still complain about the Danish weather :cloud:\n",
+            "Hello Optomech-fans! It seems nobody has done anything interesting last week, let`s hope to get some new articles next week :crossed_fingers:\n",
+            "Hello Optomech-fans! No ArXiv updates make us sad, but we can still complain about the Danish weather to feel better :cloud:\n",
             "Hello Optomech-fans! We don`t have any updates on ArXiv, but we can still talk about the positive effects of a cup of coffee :coffee:\n",
         ]
         if channel_body == "":
