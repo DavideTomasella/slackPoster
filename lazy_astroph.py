@@ -532,11 +532,20 @@ def slack_post(
                             "*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*\n"
                         )
         noArticlesPhases = [
-            "Hello Optomech-fans! This week nobody published a new interesting article on ArXiv: we should drink more coffee and work harder :coffee:\n",
-            "Hello Optomech-fans! No news this week on ArXiv. I`m sure the Danish weather affected our collegues` schedule :rain_cloud:\n",
-            "Hello Optomech-fans! It seems nobody has done anything interesting last week, let`s hope to get some new articles next week :crossed_fingers:\n",
-            "Hello Optomech-fans! No ArXiv updates make us sad, but we can still complain about the Danish weather to feel better :cloud:\n",
-            "Hello Optomech-fans! We don`t have any updates on ArXiv, but we can still talk about the positive effects of a cup of coffee :coffee:\n",
+            "Hello Optomech fellows! This week nobody published a new interesting article on ArXiv: we should drink more coffee and work harder! :coffee:\n",
+            "Hello Optomech-fans! No news this week on ArXiv. I`m sure the Danish weather affected our collegues` schedule! :rain_cloud:\n",
+            "Hello Optomech-enjoyers! It seems nobody has done anything interesting last week, let`s hope to get some new articles next week! :crossed_fingers:\n",
+            "Hello Optomech-fans! No ArXiv updates make us sad, but we can still complain about the Danish weather to feel better! :cloud:\n",
+            "Hello Optomech enthusiasts! We don`t have any updates on ArXiv, but we can still talk about the positive effects of a cup of coffee! :coffee:\n",
+            "Hey, Optomech enthusiasts! Even if ArXiv`s quiet this week, let`s ignite our curiosity and dive into our own experiments! :microscope:\n",
+            "Hey there, Optomech crew! While ArXiv stays silent, let`s fuel our passion by sharing our own insights and discoveries! :rocket:\n",
+            "Greetings, Optomech enthusiasts! No updates on ArXiv? No problem! Let`s brew some creativity and stir up our own innovative ideas! :art:\n",
+            "Hello Optomech-fans! ArXiv`s dry as Danish humor, but our coffee addiction might just lead to a discovery as strong as an espresso shot! :coffee::sweat_smile:\n",
+            "Hello Optomech adventurers! ArXiv`s snoozing, much like a Danish winter, but our coffee rituals bring warmth and inspiration to our research table! :coffee::snowflake:\n",
+            "Hello Optomech-fans! ArXiv`s as quiet as a Danish winter, but fear not, our coffee intake can generate enough warmth! :coffee::fire:\n",
+            "Hello Optomech aficionados! No ArXiv updates? Let`s channel our energy into creating our best cup of coffee! :coffee:\n",
+            "Hello Optomech-fans! No ArXiv updates? Let`s harness this calm to explore uncharted territories within our labs! :world_map:\n",
+            "Hey Optomech adventures! When ArXiv`s quiet, it`s the perfect time to cultivate our patience and nurture our spirits with some hot coffee! :coffee::seedling:\n",
         ]
         if channel_body == "":
             channel_body = random.choice(noArticlesPhases)
