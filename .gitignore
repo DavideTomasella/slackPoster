@@ -2,14 +2,12 @@
 
 *~
 
-*/.lazy_astroph-*
+*/.already_posted-*
+*/.latest_posted-*
 
 nohup.out
 
 *.log
 
 emails.txt
-
-PD_events/__pycache__/
-
 fave_authors.txt

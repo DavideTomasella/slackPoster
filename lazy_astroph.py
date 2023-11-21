@@ -12,6 +12,7 @@ import smtplib
 import subprocess
 import sys
 import time
+import random
 import traceback
 from email.mime.text import MIMEText
 
@@ -26,9 +27,9 @@ except ImportError:
 
 class Paper:
     """a Paper is a single paper listed on arXiv.  In addition to the
-       paper's title, ID, and URL (obtained from arXiv), we also store
-       which keywords it matched and which Slack channel it should go
-       to"""
+    paper's title, ID, and URL (obtained from arXiv), we also store
+    which keywords it matched and which Slack channel it should go
+    to"""
 
     def __init__(self, arxiv_id, title, url, keywords, channels):
         self.arxiv_id = arxiv_id
@@ -40,15 +41,15 @@ class Paper:
 
     def __str__(self):
         t = " ".join(self.title.split())  # remove extra spaces
-        return u"{} : {}\n  {}\n".format(self.arxiv_id, t, self.url)
+        return "{} : {}\n  {}\n".format(self.arxiv_id, t, self.url)
 
     def kw_str(self):
-        """ return the union of keywords """
+        """return the union of keywords"""
         return ", ".join(self.keywords)
 
     def __lt__(self, other):
         """we compare Papers by the number of keywords, and then
-           alphabetically by the union of their keywords"""
+        alphabetically by the union of their keywords"""
 
         if len(self.keywords) == len(other.keywords):
             return self.kw_str() < other.kw_str()
@@ -58,8 +59,8 @@ class Paper:
 
 class Keyword:
     """a Keyword includes: the text we should match, how the matching
-       should be done (unique or any), which words, if present, negate
-       the match, and what Slack channel this keyword is associated with"""
+    should be done (unique or any), which words, if present, negate
+    the match, and what Slack channel this keyword is associated with"""
 
     def __init__(self, name, matching="any", channel=None, excludes=None):
         self.name = name
@@ -69,12 +70,16 @@ class Keyword:
 
     def __str__(self):
         return "{}: matching={}, channel={}, NOTs={}".format(
-            self.name, self.matching, self.channel, self.excludes)
+            self.name, self.matching, self.channel, self.excludes
+        )
 
-class CompletionError(Exception): pass
+
+class CompletionError(Exception):
+    pass
+
 
 class AstrophQuery:
-    """ a class to define a query to the arXiv astroph papers """
+    """a class to define a query to the arXiv astroph papers"""
 
     def __init__(self, start_date, end_date, max_papers, arxiv_channel, old_id=None):
         self.start_date = start_date
@@ -83,41 +88,79 @@ class AstrophQuery:
         self.old_id = old_id
 
         self.base_url = "http://export.arxiv.org/api/query?"
-        self.sort_query = "max_results={}&sortBy=submittedDate&sortOrder=descending".format(
-            self.max_papers)
+        self.sort_query = (
+            "max_results={}&sortBy=submittedDate&sortOrder=descending".format(
+                self.max_papers
+            )
+        )
 
         self.arxiv_channel = arxiv_channel
-        self.suffix_dict = {'astro': '-ph.',
-                            'cond': '-mat.',
-                            'gr': '-qc',
-                            'hep': '-',
-                            'math': '-ph',
-                            'nlin': '.',
-                            'physics': '.',
-                            'quant': '-ph'}
-        self.subcat_dict = {'astro': ["GA", "CO", "EP", "HE", "IM", "SR"],
-                            'cond': ["dis-nn", "mtrl-sci", "mes-hall", "other", "quant-gas", "soft", "stat-mech", "str-el", "supr-con"],
-                            'gr': [''],
-                            'hep': ["ex", "lat", "ph", "th"],
-                            'math': [''],
-                            'nlin': ['AO', 'CG', 'CD', 'SI', 'PS'],
-                            'nucl': ['ex', 'th'],
-                            'physics': ['acc-ph', 'app-ph', 'ao-ph', 'atom-ph', 'atm-clus', 'bio-ph', 'chem-ph', 
-                                         'class-ph', 'comp-ph', 'data-an', 'flu-dyn', 'gen-ph', 'geo-ph', 'hist-ph', 'ins-det',
-                                         'med-ph', 'optics', 'ed-ph', 'soc-ph', 'plasm-ph', 'pop-ph', 'space-ph'],
-                            'quant': ['']}
+        self.suffix_dict = {
+            "astro": "-ph.",
+            "cond": "-mat.",
+            "gr": "-qc",
+            "hep": "-",
+            "math": "-ph",
+            "nlin": ".",
+            "physics": ".",
+            "quant": "-ph",
+        }
+        self.subcat_dict = {
+            "astro": ["GA", "CO", "EP", "HE", "IM", "SR"],
+            "cond": [
+                "dis-nn",
+                "mtrl-sci",
+                "mes-hall",
+                "other",
+                "quant-gas",
+                "soft",
+                "stat-mech",
+                "str-el",
+                "supr-con",
+            ],
+            "gr": [""],
+            "hep": ["ex", "lat", "ph", "th"],
+            "math": [""],
+            "nlin": ["AO", "CG", "CD", "SI", "PS"],
+            "nucl": ["ex", "th"],
+            "physics": [
+                "acc-ph",
+                "app-ph",
+                "ao-ph",
+                "atom-ph",
+                "atm-clus",
+                "bio-ph",
+                "chem-ph",
+                "class-ph",
+                "comp-ph",
+                "data-an",
+                "flu-dyn",
+                "gen-ph",
+                "geo-ph",
+                "hist-ph",
+                "ins-det",
+                "med-ph",
+                "optics",
+                "ed-ph",
+                "soc-ph",
+                "plasm-ph",
+                "pop-ph",
+                "space-ph",
+            ],
+            "quant": [""],
+        }
 
-        self.subcat = self.subcat_dict[self.arxiv_channel] 
+        self.subcat = self.subcat_dict[self.arxiv_channel]
 
     def get_cat_query(self):
-        """ create the category portion of the astro ph query """
+        """create the category portion of the astro ph query"""
 
         cat_query = "%28"  # open parenthesis
         for n, s in enumerate(self.subcat):
-            #cat_query += "astro-ph.{}".format(s)
+            # cat_query += "astro-ph.{}".format(s)
             cat_query += self.arxiv_channel + self.suffix_dict[self.arxiv_channel] + s
-            #print(self.subcat)
-            if n < len(self.subcat)-1:
+            # print(self.subcat)
+            if n < len(self.subcat) - 1:
                 cat_query += "+OR+"
             else:
                 cat_query += "%29"  # close parenthesis
@@ -125,55 +168,66 @@ class AstrophQuery:
         return cat_query
 
     def get_range_query(self):
-        """ get the query string for the date range """
+        """get the query string for the date range"""
 
         # here the 2000 on each date is 8:00pm
-        range_str = "[{}2000+TO+{}2000]".format(self.start_date.strftime("%Y%m%d"),
-                                                self.end_date.strftime("%Y%m%d"))
+        range_str = "[{}2000+TO+{}2000]".format(
+            self.start_date.strftime("%Y%m%d"), self.end_date.strftime("%Y%m%d")
+        )
         range_query = "lastUpdatedDate:{}".format(range_str)
         return range_query
 
     def get_url(self):
-        """ create the URL we will use to query arXiv """
+        """create the URL we will use to query arXiv"""
 
         cat_query = self.get_cat_query()
         range_query = self.get_range_query()
 
-        full_query = "search_query={}+AND+{}&{}".format(cat_query, range_query, self.sort_query)
+        full_query = "search_query={}+AND+{}&{}".format(
+            cat_query, range_query, self.sort_query
+        )
 
         print(self.base_url + full_query)
 
         return self.base_url + full_query
 
     def do_query(self, fave_authors, keywords=None, old_id=None):
-        """ perform the actual query """
+        """perform the actual query"""
 
         # note, in python3 this will be bytes not str
         try:
             response = urlopen(self.get_url()).read()
         except:
             # Get email addresses
-            with open('emails.txt', 'r') as emails:
+            with open("emails.txt", "r") as emails:
                 email_addresses = [x.strip() for x in emails.readlines()]
-            
+
             # Compose Traceback
-            body = "I failed on " + args.w.split('/')[0] + ' : ' + self.arxiv_channel
-            body +="\n\n"
+            body = "I failed on " + args.w.split("/")[0] + " : " + self.arxiv_channel
+            body += "\n\n"
             body += traceback.format_exc()
-            
+
             # Send emails
             for email_add in email_addresses:
-                report(body, "Paper Poster FAILED",
-                       "lazy-astroph@{}".format(platform.node()), email_add)
-            
+                report(
+                    body,
+                    "Paper Poster FAILED",
+                    "lazy-astroph@{}".format(platform.node()),
+                    email_add,
+                )
+
             raise CompletionError
 
         response = response.replace(b"author", b"contributor")
 
         # this feedparser magic comes from the example of Julius Lucks / Andrea Zonca
         # https://github.com/zonca/python-parse-arxiv/blob/master/python_arXiv_parsing_example.py
-        feedparser._FeedParserMixin.namespaces['http://a9.com/-/spec/opensearch/1.1/'] = 'opensearch'
-        feedparser._FeedParserMixin.namespaces['http://arxiv.org/schemas/atom'] = 'arxiv'
+        feedparser.mixin._FeedParserMixin.namespaces[
+            "http://a9.com/-/spec/opensearch/1.1/"
+        ] = "opensearch"
+        feedparser.mixin._FeedParserMixin.namespaces[
+            "http://arxiv.org/schemas/atom"
+        ] = "arxiv"
 
         feed = feedparser.parse(response)
 
@@ -184,14 +238,13 @@ class AstrophQuery:
 
         latest_id = None
 
-        triggered_authors = {}     # Collect papers with authors we like
+        triggered_authors = {}  # Collect papers with authors we like
 
         for e in feed.entries:
-
             arxiv_id = e.id.split("/abs/")[-1]
             title = e.title.replace("\n", " ")
 
-            #print(arxiv_id)  # prints literally every arxiv_id in query, good for debugging
+            # print(arxiv_id)  # prints literally every arxiv_id in query, good for debugging
 
             # the papers are sorted now such that the first is the
             # most recent -- we want to store this id, so the next
@@ -216,18 +269,17 @@ class AstrophQuery:
 
             # Look for specific authors
             contributors = e.contributors
-            for c in contributors: 
-                if c['name'].lower() in fave_authors.keys(): 
+            for c in contributors:
+                if c["name"].lower() in fave_authors.keys():
                     # This removes duplicate tagged authors
                     # This doesn't work if we have two dept members w/same name
                     if url in triggered_authors.keys():
                         try:
-                            g = triggered_authors[url].index(c['name'].lower())
+                            g = triggered_authors[url].index(c["name"].lower())
                         except:
-                             triggered_authors[url].append(c['name'].lower())
-                    else: 
-                        triggered_authors[url] = [c['name'].lower()]
-
+                            triggered_authors[url].append(c["name"].lower())
+                    else:
+                        triggered_authors[url] = [c["name"].lower()]
 
             # any keyword matches?
             # we do two types of matches here.  If the keyword tuple has the "any"
@@ -249,43 +301,49 @@ class AstrophQuery:
                     continue
 
                 if k.matching == "any":
-                    if k.name in abstract.lower().replace("\n", " ") or k.name in title.lower():
+                    if (
+                        k.name in abstract.lower().replace("\n", " ")
+                        or k.name in title.lower()
+                    ):
                         keys_matched.append(k.name)
                         channels.append(k.channel)
 
                 elif k.matching == "unique":
-                    qa = [l.lower().strip('\":.,!?') for l in abstract.split()]
-                    qt = [l.lower().strip('\":.,!?') for l in title.split()]
+                    qa = [l.lower().strip('":.,!?') for l in abstract.split()]
+                    qt = [l.lower().strip('":.,!?') for l in title.split()]
                     if k.name in qa + qt:
                         keys_matched.append(k.name)
                         channels.append(k.channel)
 
                 elif k.matching == "case":
-                    qa = [l.strip('\":.,!?') for l in abstract.split()]
-                    qt = [l.strip('\":.,!?') for l in title.split()]
+                    qa = [l.strip('":.,!?') for l in abstract.split()]
+                    qt = [l.strip('":.,!?') for l in title.split()]
                     if k.name in qa + qt:
                         keys_matched.append(k.name)
                         channels.append(k.channel)
 
             if keys_matched:
                 results.append(
-                    Paper(arxiv_id, title.replace("   ", " "), url, keys_matched, channels))
+                    Paper(
+                        arxiv_id, title.replace("   ", " "), url, keys_matched, channels
+                    )
+                )
 
         return results, latest_id, triggered_authors
 
 
 def send_all_emails(papers, mail):
-    """ 
+    """
     Handle a list of emails, or single email, or null argument. Then trigger
     slackPoster's send_email function.
-    
+
     :param papers: list of paper objects returned by search_astroph
     :param mail: comma-separated list of email addresses OR
                  single email address OR
                  None if no addresses to send mail to
     """
     if mail:
-        email_addresses = mail.split(',')
+        email_addresses = mail.split(",")
         for email_address in email_addresses:
             send_email(papers, mail=email_address.strip())
 
@@ -293,23 +351,23 @@ def send_all_emails(papers, mail):
 
 
 def report(body, subject, sender, receiver):
-    """ send an email """
+    """send an email"""
 
     msg = MIMEText(body)
-    msg['Subject'] = subject
-    msg['From'] = sender
-    msg['To'] = receiver
+    msg["Subject"] = subject
+    msg["From"] = sender
+    msg["To"] = receiver
 
     try:
-        sm = smtplib.SMTP('localhost')
+        sm = smtplib.SMTP("localhost")
         sm.sendmail(sender, receiver, msg.as_string())
     except smtplib.SMTPException:
         sys.exit("ERROR sending mail")
 
 
 def search_astroph(keywords, fave_authors, arxiv_channel, old_id=None):
-    """ do the actual search though astro-ph by first querying astro-ph
-        for the latest papers and then looking for keyword matches"""
+    """do the actual search though astro-ph by first querying astro-ph
+    for the latest papers and then looking for keyword matches"""
 
     today = dt.date.today()
     day = dt.timedelta(days=1)
@@ -323,17 +381,19 @@ def search_astroph(keywords, fave_authors, arxiv_channel, old_id=None):
     # in descending order if you look at the "pastweek" listing
     # but the submission dates can vary wildly.  It seems that some
     # papers are held for a week or more before appearing.
-    q = AstrophQuery(today - 10*day, today, max_papers, arxiv_channel, old_id=old_id)
-    #print(q.get_url())
+    q = AstrophQuery(today - 10 * day, today, max_papers, arxiv_channel, old_id=old_id)
+    # print(q.get_url()) #TODO DV: less than 10 days?
 
     try:
-        papers, last_id, authors = q.do_query(fave_authors, 
-                                              keywords=keywords, old_id=old_id)
+        papers, last_id, authors = q.do_query(
+            fave_authors, keywords=keywords, old_id=old_id
+        )
     except CompletionError:
         time.sleep(5)
         try:
-            papers, last_id, authors = q.do_query(fave_authors,
-                                                  keywords=keywords, old_id=old_id)
+            papers, last_id, authors = q.do_query(
+                fave_authors, keywords=keywords, old_id=old_id
+            )
         except CompletionError:
             sys.exit()
 
@@ -343,7 +403,6 @@ def search_astroph(keywords, fave_authors, arxiv_channel, old_id=None):
 
 
 def send_email(papers, mail=None):
-
     # compose the body of our e-mail
     body = ""
 
@@ -354,15 +413,20 @@ def send_email(papers, mail=None):
             current_kw = p.kw_str()
             body += "\nkeywords: {}\n\n".format(current_kw)
 
-        body += u"{}\n".format(p)
+        body += "{}\n".format(p)
 
     # e-mail it
     if not len(papers) == 0:
         if not mail is None:
-            report(body, "astro-ph papers of interest",
-                   "lazy-astroph@{}".format(platform.node()), mail)
+            report(
+                body,
+                "astro-ph papers of interest",
+                "lazy-astroph@{}".format(platform.node()),
+                mail,
+            )
         else:
             print(body)
+
 
 def backup_plan(string):
     """
@@ -378,21 +442,22 @@ def backup_plan(string):
         counter += 1
         stdout0, stderr0, rc = run(string)
 
-        if int(rc) == 0: 
+        if int(rc) == 0:
             break
-            
+
         time.sleep(120)
-    
+
     # if it worked, we're done
-    if int(rc) == 0: return
+    if int(rc) == 0:
+        return
 
     # othewrwise, give up so param files don't write, but email us first
-    body = "Broken, I am. Save me, you must.\n\n" + str(stdout0) 
-    body += '\n' + str(stderr0) + '\n' + "Error Code: " + str(rc) 
-    
-    with open('emails.txt', 'r') as emails:
+    body = "Broken, I am. Save me, you must.\n\n" + str(stdout0)
+    body += "\n" + str(stderr0) + "\n" + "Error Code: " + str(rc)
+
+    with open("emails.txt", "r") as emails:
         email_addresses = [x.strip() for x in emails.readlines()]
-    
+
     for mail in email_addresses:
         report(body, ":'(", "lazy-astroph@{}".format(platform.node()), mail)
 
@@ -402,12 +467,11 @@ def backup_plan(string):
 
 
 def run(string):
-    """ run a UNIX command """
+    """run a UNIX command"""
 
     # shlex.split will preserve inner quotes
     prog = shlex.split(string)
-    p0 = subprocess.Popen(prog, stdout=subprocess.PIPE,
-                          stderr=subprocess.STDOUT)
+    p0 = subprocess.Popen(prog, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
     stdout0, stderr0 = p0.communicate()
     rc = p0.returncode
@@ -416,9 +480,16 @@ def run(string):
     return stdout0, stderr0, rc
 
 
-def slack_post(papers, channel_req, authors, fave_authors, 
-                    username=None, icon_emoji=None, webhook=None):
-    """ post the information to a slack channel """
+def slack_post(
+    papers,
+    channel_req,
+    authors,
+    fave_authors,
+    username=None,
+    icon_emoji=None,
+    webhook=None,
+):
+    """post the information to a slack channel"""
 
     # loop by channel
     for c in channel_req:
@@ -435,24 +506,46 @@ def slack_post(papers, channel_req, authors, fave_authors,
             if not p.posted_to_slack:
                 if (c in p.channels) and (len(p.keywords) >= channel_req[c]):
                     if p.url in authors.keys():
-                        channel_body += ("\n"
-"*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*\n")
+                        channel_body += (
+                            "\n"
+                            "*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*\n"
+                        )
                     if len(p.keywords) >= channel_req[c]:
                         num += 1
                         keywds = ", ".join(p.keywords).strip()
                         channel_body += "{0}. {1}\n\t\t[{3}] - {2}\n".format(
-                                                   num, p.title, p.url, keywds)
-                        #channel_body += u"{} [{}]\n\n".format(p, keywds)
+                            num, p.title, p.url, keywds
+                        )
+                        # channel_body += u"{} [{}]\n\n".format(p, keywds)
                         p.posted_to_slack = 1
                     if p.url in authors.keys():
-                        for peep in authors[p.url]: 
-                            channel_body += ("\n\t\t:point_up::star-struck: "
-                            "*Congrats <{}> on your paper!!*".format(
-                                                       fave_authors[peep]))
+                        for peep in authors[p.url]:
+                            channel_body += (
+                                "\n\t\t:point_up::star-struck: "
+                                "*Congrats <{}> on your paper!!*".format(
+                                    fave_authors[peep]
+                                )
+                            )
                             channel_body += ":tada::sparkles:\n"
-                        channel_body += ("\n"
-"*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*\n")
-
+                        channel_body += (
+                            "\n"
+                            "*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*\n"
+                        )
+        noArticlesPhases = [
+            "Hello Optomech-fans! This week nobody published a new interesting article on ArXiv: we should drink more coffee and work harder :coffee:\n",
+            "Hello Optomech-fans! No news this week on ArXiv. I`m sure the Danish weather affected our collegues` schedule :rain_cloud:\n",
+            "Hello Optomech-fans! It seems nobody has done anything interesting last week, let`s hope to get something new next week :crossed_fingers:\n",
+            "Hello Optomech-fans! No updates make us sad, but we can still complain about the Danish weather :cloud:\n",
+            "Hello Optomech-fans! We don`t have any updates on ArXiv, but we can still talk about the positive effects of a cup of coffee :coffee:\n",
+        ]
+        if channel_body == "":
+            channel_body = random.choice(noArticlesPhases)
+        else:
+            channel_body = (
+                "Hello Optomech-fans! Here are the papers from other Optomech-enjoyers you have missed this week on ArXiv:\n"
+                + channel_body
+            )
+        print(channel_body)
         if webhook is None:
             print("channel: {}".format(c))
             continue
@@ -465,35 +558,52 @@ def slack_post(papers, channel_req, authors, fave_authors,
             payload["icon_emoji"] = icon_emoji
         payload["text"] = channel_body
 
-        cmd = "curl -X POST --data-urlencode 'payload={}' {}".format(json.dumps(payload), webhook)
+        cmd = "curl -X POST --data-urlencode 'payload={}' {}".format(
+            json.dumps(payload), webhook
+        )
         backup_plan(cmd)
 
+
 def doit():
-    """ the main driver for the lazy-astroph script """
+    """the main driver for the lazy-astroph script"""
 
     # parse runtime parameters
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("-m", help="e-mail address to send report to. Use comma-separated list for multiple.",
-                        type=str, default=None)
-    parser.add_argument("inputs", help="inputs file containing keywords",
-                        type=str, nargs=1)
-    parser.add_argument("-w", help="file containing slack webhook URL",
-                        type=str, default=None)
-    parser.add_argument("-u", help="slack username appearing in post",
-                        type=str, default=None)
-    parser.add_argument("-e", help="slack icon_emoji appearing in post",
-                        type=str, default=None)
-    parser.add_argument("--dry_run",
-                        help="don't send any mail or slack posts and don't update the marker where we left off",
-                        action="store_true")
-    parser.add_argument("--channel", type=str, default="astro", 
-                        help="Name of arXiv channel that you're searching") 
-    global args 
+    parser.add_argument(
+        "-m",
+        help="e-mail address to send report to. Use comma-separated list for multiple.",
+        type=str,
+        default=None,
+    )
+    parser.add_argument(
+        "inputs", help="inputs file containing keywords", type=str, nargs=1
+    )
+    parser.add_argument(
+        "-w", help="file containing slack webhook URL", type=str, default=None
+    )
+    parser.add_argument(
+        "-u", help="slack username appearing in post", type=str, default=None
+    )
+    parser.add_argument(
+        "-e", help="slack icon_emoji appearing in post", type=str, default=None
+    )
+    parser.add_argument(
+        "--dry_run",
+        help="don't send any mail or slack posts and don't update the marker where we left off",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--channel",
+        type=str,
+        default="astro",
+        help="Name of arXiv channel that you're searching",
+    )
+    global args
     args = parser.parse_args()
-    
+
     directory_name = args.inputs[0][0:-7]
-    
+
     # get the keywords
     keywords = []
     try:
@@ -529,37 +639,38 @@ def doit():
                     kw = l.strip()
                     excludes = []
 
-                if kw[len(kw)-1] == "-":
+                if kw[len(kw) - 1] == "-":
                     matching = "unique"
-                    kw = kw[:len(kw)-1]
+                    kw = kw[: len(kw) - 1]
                 else:
                     matching = "any"
 
-                keywords.append(Keyword(kw, matching=matching,
-                                        channel=channel, excludes=excludes))
+                keywords.append(
+                    Keyword(kw, matching=matching, channel=channel, excludes=excludes)
+                )
 
-    # Search though each arXiv channel, save all the papers. 
-    channels_to_search = args.channel.split(',')
+    # Search though each arXiv channel, save all the papers.
+    channels_to_search = args.channel.split(",")
     papers = []
     last_id = []
 
     # Load in file of selected authors we like to support
     fave_authors = {}
     author_file = "fave_authors.txt"
-    with open(author_file, 'r') as f:
-        for line in f: 
+    with open(author_file, "r") as f:
+        for line in f:
             line = line.strip()
-            key = line.split(';')[0].lower()
-            value = line.split(';')[1]
+            key = line.split(";")[0].lower()
+            value = line.split(";")[1]
             fave_authors[key] = value
 
     all_authors = {}
     for channel_n in range(len(channels_to_search)):
-
         # have we done this before? if so, read the .lazy_astroph file to get
         # the id of the paper we left off with
-        param_file = directory_name + "/.lazy_astroph-{}".format(
-                                                  channels_to_search[channel_n])
+        param_file = directory_name + "/.latest_posted-{}".format(
+            channels_to_search[channel_n]
+        )
         try:
             f = open(param_file, "r")
         except:
@@ -568,15 +679,42 @@ def doit():
             old_id = f.readline().rstrip()
             f.close()
 
-        #search the channels
-        papers_tmp, last_id_tmp, authors = search_astroph(keywords,fave_authors,
-               arxiv_channel=channels_to_search[channel_n], old_id=old_id)
+        posted_file = directory_name + "/.already_posted-{}".format(
+            channels_to_search[channel_n]
+        )
+        try:
+            f = open(posted_file, "r")
+        except:
+            posted_ids = None
+        else:
+            posted_ids = f.read().splitlines()
+            print(posted_ids)
+            f.close()
+
+        # search the channels
+        papers_tmp, last_id_tmp, authors = search_astroph(
+            keywords,
+            fave_authors,
+            arxiv_channel=channels_to_search[channel_n],
+            old_id=old_id,
+        )
         for k, v in authors.items():
             all_authors[k] = v
 
         print("doit last_id_tmp", last_id_tmp)
         for paper in papers_tmp:
+            if posted_ids is not None and paper.arxiv_id in posted_ids:
+                paper.posted_to_slack = 1
+            else:
+                try:
+                    f = open(posted_file, "a+")
+                except:
+                    sys.exit("ERROR: unable to open posted file for writting")
+                else:
+                    f.write(paper.arxiv_id + "\n")
+                    f.close()
             papers.append(paper)
+
         last_id.append([param_file, last_id_tmp])
 
     print([x.keywords for x in papers])
@@ -595,9 +733,15 @@ def doit():
         else:
             webhook = None
 
-        slack_post(papers, channel_req, all_authors, fave_authors, 
-                    icon_emoji=args.e, 
-                    username=args.u, webhook=webhook)
+        slack_post(
+            papers,
+            channel_req,
+            all_authors,
+            fave_authors,
+            icon_emoji=args.e,
+            username=args.u,
+            webhook=webhook,
+        )
 
         for ids in last_id:
             print("writing param_file", ids[0])
@@ -610,6 +754,7 @@ def doit():
                 f.close()
     else:
         send_all_emails(papers, mail=None)
+
 
 if __name__ == "__main__":
     print(dt.datetime.now())
