@@ -2,7 +2,7 @@
 optomechanics
 hybrid quantum system
 
-#test_bot requires=2
+#test requires=2
 optomechanics
 quantum computing
 optics
