@@ -542,7 +542,7 @@ def slack_post(
             channel_body = random.choice(noArticlesPhases)
         else:
             channel_body = (
-                "Hello Optomech-fans! Here are the papers from other Optomech-enjoyers you have missed this week on ArXiv:\n"
+                "Hello Optomech-fans! Here are the papers published this week on ArXiv from other Optomech-enjoyers:\n"
                 + channel_body
             )
         print(channel_body)
